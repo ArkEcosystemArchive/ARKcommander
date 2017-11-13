@@ -974,7 +974,7 @@ three(){
                 	echo -e "\n$(red "       ✘ ARK Node process is not running")\n"
 			echo -e "$(green "            Updating ARK Node...")\n"
 			update_ark
-			forever start -l ${arkdir}/logs/process.log -o ${arkdir}/logs/process-output.log -e ${arkdir}/logs/process-errors.log app.js --genesis genesisBlock.devnet.json --config config.devnet.json >&- 2>&-
+			forever start app.js --genesis genesisBlock.devnet.json --config config.devnet.json >&- 2>&-
 			echo -e "$(green "    ✔ ARK Node was successfully started")\n"
         	        pause
         	fi
@@ -1004,7 +1004,7 @@ four(){
 		# Here should come the snap choice
 		snap_menu
                 echo -e "$(green "            Starting ARK Node...")"
-		forever start -l ${arkdir}/logs/process.log -o ${arkdir}/logs/process-output.log -e ${arkdir}/logs/process-errors.log app.js --genesis genesisBlock.devnet.json --config config.devnet.json >&- 2>&-
+		forever start app.js --genesis genesisBlock.devnet.json --config config.devnet.json >&- 2>&-
                 echo -e "\n$(green "    ✔ ARK Node was successfully started")\n"
                 pause
         else
@@ -1019,7 +1019,7 @@ four(){
 		snap_menu
 		echo -e "$(green "            Starting ARK Node...")"
 		cd $arkdir
-                forever start -l ${arkdir}/logs/process.log -o ${arkdir}/logs/process-output.log -e ${arkdir}/logs/process-errors.log app.js --genesis genesisBlock.devnet.json --config config.devnet.json >&- 2>&-
+                forever start app.js --genesis genesisBlock.devnet.json --config config.devnet.json >&- 2>&-
                 echo -e "$(green "    ✔ ARK Node was successfully started")\n"
                 pause
         fi
@@ -1044,7 +1044,7 @@ five(){
 		else
 			echo -e "\n$(red "       ✘ ARK Node process is not running")\n"
 			echo -e "$(green "            Starting ARK Node...")\n"
-			forever start -l ${arkdir}/logs/process.log -o ${arkdir}/logs/process-output.log -e ${arkdir}/logs/process-errors.log app.js --genesis genesisBlock.devnet.json --config config.devnet.json >&- 2>&-
+			forever start app.js --genesis genesisBlock.devnet.json --config config.devnet.json >&- 2>&-
 			echo -e "$(green "    ✔ ARK Node was successfully started")\n"
 			pause
 		fi
@@ -1088,7 +1088,7 @@ start(){
 		else
 			echo -e "$(green "            Starting ARK Node...")\n"
 			cd $arkdir
-			forever start -l ${arkdir}/logs/process.log -o ${arkdir}/logs/process-output.log -e ${arkdir}/logs/process-errors.log app.js --genesis genesisBlock.devnet.json --config config.devnet.json >&- 2>&-
+			forever start app.js --genesis genesisBlock.devnet.json --config config.devnet.json >&- 2>&-
 			cd $parent
 			echo -e "$(green "    ✔ ARK Node was successfully started")\n"
 			sleep 1
