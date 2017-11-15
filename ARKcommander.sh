@@ -1069,7 +1069,6 @@ do
         read_sub_options
 done
 
-sub_menu
 ##turn
 #pause
 }
@@ -1271,7 +1270,7 @@ read_sub_options(){
 		5) subfive ;;
 		6) subsix ;;
 		7) seven ;;
-		0) break ;;
+		0) init ;;
 		*) echo -e "$(red "             Incorrect option!")" && sleep 1
 	esac
 }
@@ -1359,15 +1358,23 @@ sudo updatedb
 proc_vars
 #exit
 
+init() {
+    # ----------------------------------------------
+    # Menu infinite loop
+    # ----------------------------------------------
+
+    while true
+    do
+        asciiart
+    # HERE COMES THE GITHUB CHECK
+        git_upd_check
+        show_menus
+        read_options
+    done
+}
+
 # ----------------------------------------------
-# Menu infinite loop
+# Init Application
 # ----------------------------------------------
 
-while true
-do
-	asciiart
-# HERE COMES THE GITHUB CHECK
-	git_upd_check
-	show_menus
-	read_options
-done
+init
