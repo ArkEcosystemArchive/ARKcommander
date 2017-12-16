@@ -19,11 +19,11 @@ function red {
 }
 
 function igreen {
-	echo -e "$(tput bold; tput setaf 0; tput setab 2)$1$(tput sgr0)"
+    echo -e "$(tput bold; tput setaf 0; tput setab 2)$1$(tput sgr0)"
 }
 
 function ired {
-	echo -e "$(tput bold; tput setaf 3; tput setab 1)$1$(tput sgr0)"
+    echo -e "$(tput bold; tput setaf 3; tput setab 1)$1$(tput sgr0)"
 }
 
 function green {
@@ -38,27 +38,27 @@ function yellow {
 ### Checking if the script is started as root ###
 
 if [ "$(id -u)" = "0" ]; then
-	clear
-	echo -e "\n$(ired " !!! This script should NOT be started using sudo or as the root user !!! ") "
-	echo -e "\nUse $(green "bash ARKcommander.sh") as a REGULAR user instead"
-	echo -e "Execute ONCE $(green "chmod +x ARKcommander.sh") followed by $(green "ENTER")"
-	echo -e "and start it only by $(green "./arkcommander.sh") as regular user after\n"
-	exit 1
+    clear
+    echo -e "\n$(ired " !!! This script should NOT be started using sudo or as the root user !!! ") "
+    echo -e "\nUse $(green "bash ARKcommander.sh") as a REGULAR user instead"
+    echo -e "Execute ONCE $(green "chmod +x ARKcommander.sh") followed by $(green "ENTER")"
+    echo -e "and start it only by $(green "./arkcommander.sh") as regular user after\n"
+    exit 1
 fi
 
 ### Checking the Virtualization Environment ###
 
 if [ $(systemd-detect-virt -c) != "none" ]; then
-	clear
-	echo "$(ired "                                                                                 ")"
-	echo "$(ired "                    OpenVZ / LXC / Virtuoso Container detected!                  ")"
-	echo "$(ired "                                                                                 ")"
-	echo "$(ired "     Running ARK Node on a Container based virtual system is not recommended!    ")"
-	echo "$(ired "   Please change your VPS provider with one that uses hardware Virtualization.   ")"
-	echo "$(ired "                                                                                 ")"
-	echo "$(ired "                            This script will now exit!                           ")"
-	echo "$(ired "                                                                                 ")"
-	exit 1
+    clear
+    echo "$(ired "                                                                                 ")"
+    echo "$(ired "                    OpenVZ / LXC / Virtuoso Container detected!                  ")"
+    echo "$(ired "                                                                                 ")"
+    echo "$(ired "     Running ARK Node on a Container based virtual system is not recommended!    ")"
+    echo "$(ired "   Please change your VPS provider with one that uses hardware Virtualization.   ")"
+    echo "$(ired "                                                                                 ")"
+    echo "$(ired "                            This script will now exit!                           ")"
+    echo "$(ired "                                                                                 ")"
+    exit 1
 fi
 
 
@@ -89,29 +89,12 @@ re='^[0-9]+$' # For numeric checks
 # Logfile
 log="install_ark.log"
 
-#~ SEED NODES ~#
-seed0=("5.39.9.250:4001" "seed01")
-seed1=("5.39.9.251:4001" "seed02")
-seed2=("5.39.9.252:4001" "seed03")
-seed3=("5.39.9.253:4001" "seed04")
-seed4=("5.39.9.254:4001" "seed05")
-
-#~ API CALL ~#
-apicall="/api/loader/status/sync"
-
 # ----------------------------------
 # Arrays
 # ----------------------------------
 
 # Install prereq packages array
 declare -a array=("postgresql" "postgresql-contrib" "libpq-dev" "build-essential" "python" "git" "curl" "jq" "libtool" "autoconf" "locales" "automake" "locate" "wget" "zip" "unzip" "htop" "nmon" "iftop")
-
-#~ Network height checker ~#
-declare -a nodes=(seed0[@] seed1[@] seed2[@] seed3[@] seed4[@])
-declare -a height=()
-
-# Get array length
-arraylength=${#nodes[@]}
 
 # ----------------------------------
 # Functions
@@ -150,45 +133,29 @@ pause(){
 # Current Network Height
 
 function net_height {
-	# Spawning curl netheight processes loop
-        for n in {1..$arraylength..$arraylength}; do
-                for (( i=1; i<${arraylength}+1; i++ )); do
-                        saddr=${!nodes[i-1]:0:1}
-                        echo $i $(curl -m 3 -s $saddr$apicall | cut -f 5 -d ":" | sed 's/,.*//' | sed 's/}$//') >> $HOME/tout.txt &
-                done
-                wait
-        done
-
-	# Array read
-	while read ind line; do
-		height[$ind]=$line # assign array values
-	done < $HOME/tout.txt
-	rm $HOME/tout.txt
-
-	# Finding the highest seednodes block
-	IFS=$'\n'
-	highest=($(sort -nr <<<"${height[*]}"))
-	unset IFS
+    local heights=$(curl -s "$LOC_SERVER/api/peers" | jq -r '.peers[] | .height')
+    
+    highest=$(echo "${heights[*]}" | sort -nr | head -n1)
 }
 
 # Find parent PID
 function top_level_parent_pid {
         # Look up the parent of the given PID.
         pid=${1:-$$}
-	if [ "$pid" != "0" ]; then
-	        stat=($(</proc/${pid}/stat))
-        	ppid=${stat[3]}
+    if [ "$pid" != "0" ]; then
+            stat=($(</proc/${pid}/stat))
+            ppid=${stat[3]}
 
-	        # /sbin/init always has a PID of 1, so if you reach that, the current PID is
-        	# the top-level parent. Otherwise, keep looking.
-	        if [[ ${ppid} -eq 1 ]] ; then
-        	        echo ${pid}
-        	else
-                	top_level_parent_pid ${ppid}
-        	fi
-	else
-		pid=0
-	fi
+            # /sbin/init always has a PID of 1, so if you reach that, the current PID is
+            # the top-level parent. Otherwise, keep looking.
+            if [[ ${ppid} -eq 1 ]] ; then
+                    echo ${pid}
+            else
+                    top_level_parent_pid ${ppid}
+            fi
+    else
+        pid=0
+    fi
 }
 
 # Process management variables
@@ -234,75 +201,75 @@ RANK="$(psql -d ark_mainnet -t -c 'WITH RANK AS (SELECT DISTINCT "publicKey", "v
 
 # Stats Address Change
 change_address() {
-	echo "$(yellow "   Enter your delegate address for Stats")"
-	echo "$(yellow "    WITHOUT QUOTES, followed by 'ENTER'")"
-	read -e -r -p "$(yellow " :") " inaddress
-	while [ ! "${inaddress:0:1}" == "A" ] ; do
-		echo -e "\n$(ired "   Enter delegate ADDRESS, NOT the SECRET!")\n"
-		read -e -r -p "$(yellow " :") " inaddress
-	done
-	ADDRESS=$inaddress
-#	sed -i "s#\(.*ADDRESS\=\)\( .*\)#\1 "\"$inaddress\""#" $DIR/$BASH_SOURCE
-	sed -i "1,/\(.*ADDRESS\=\)/s#\(.*ADDRESS\=\)\(.*\)#\1"\"$inaddress\""#" $DIR/$BASH_SOURCE
+    echo "$(yellow "   Enter your delegate address for Stats")"
+    echo "$(yellow "    WITHOUT QUOTES, followed by 'ENTER'")"
+    read -e -r -p "$(yellow " :") " inaddress
+    while [ ! "${inaddress:0:1}" == "A" ] ; do
+        echo -e "\n$(ired "   Enter delegate ADDRESS, NOT the SECRET!")\n"
+        read -e -r -p "$(yellow " :") " inaddress
+    done
+    ADDRESS=$inaddress
+#   sed -i "s#\(.*ADDRESS\=\)\( .*\)#\1 "\"$inaddress\""#" $DIR/$BASH_SOURCE
+    sed -i "1,/\(.*ADDRESS\=\)/s#\(.*ADDRESS\=\)\(.*\)#\1"\"$inaddress\""#" $DIR/$BASH_SOURCE
 }
 
 
 # Forging Turn
 turn() {
-	DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-#	echo $DIR
-#	echo "$BASH_SOURCE"
-#	echo "$ADDRESS"
-	if [ "$ADDRESS" == "" ] ; then
-		change_address
-#		echo "$(yellow "   Enter your delegate address for Stats")"
-#		echo "$(yellow "    WITHOUT QUOTES, followed by 'ENTER'")"
-#		read -e -r -p "$(yellow " :") " inaddress
-#		while [ ! "${inaddress:0:1}" == "A" ] ; do
-#			echo -e "\n$(ired "   Enter delegate ADDRESS, NOT the SECRET!")\n"
-#			read -e -r -p "$(yellow " :") " inaddress
-#		done
-#		ADDRESS=$inaddress
-##		sed -i "s#\(.*ADDRESS\=\)\( .*\)#\1 "\"$inaddress\""#" $DIR/$BASH_SOURCE
-#		sed -i "1,/\(.*ADDRESS\=\)/s#\(.*ADDRESS\=\)\(.*\)#\1"\"$inaddress\""#" $DIR/$BASH_SOURCE
-	fi
-#	pause
+    DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+#   echo $DIR
+#   echo "$BASH_SOURCE"
+#   echo "$ADDRESS"
+    if [ "$ADDRESS" == "" ] ; then
+        change_address
+#       echo "$(yellow "   Enter your delegate address for Stats")"
+#       echo "$(yellow "    WITHOUT QUOTES, followed by 'ENTER'")"
+#       read -e -r -p "$(yellow " :") " inaddress
+#       while [ ! "${inaddress:0:1}" == "A" ] ; do
+#           echo -e "\n$(ired "   Enter delegate ADDRESS, NOT the SECRET!")\n"
+#           read -e -r -p "$(yellow " :") " inaddress
+#       done
+#       ADDRESS=$inaddress
+##      sed -i "s#\(.*ADDRESS\=\)\( .*\)#\1 "\"$inaddress\""#" $DIR/$BASH_SOURCE
+#       sed -i "1,/\(.*ADDRESS\=\)/s#\(.*ADDRESS\=\)\(.*\)#\1"\"$inaddress\""#" $DIR/$BASH_SOURCE
+    fi
+#   pause
 while true; do
-#	trap : INT
-	query
-	net_height
-	asciiart
-	proc_vars
-	queue=`curl --connect-timeout 3 -f -s $LOC_SERVER/api/delegates/getNextForgers?limit=51 | jq ".delegates"`
-	is_forging=`curl -s --connect-timeout 1 $LOC_SERVER/api/delegates/forging/status?publicKey=$PUBKEY 2>/dev/null | jq ".enabled"`
-	is_syncing=`curl -s --connect-timeout 1 $LOC_SERVER/api/loader/status/sync 2>/dev/null | jq ".syncing"`
-	pos=0
-	for position in $queue
-	do
-		position=`echo "$position" | tr -d '",'`
-		if [[ $PUBKEY == $position ]]; then
-#			echo "$position : $pos <=="
-			turn=$pos
-		fi
-		pos=`expr $pos + 1`
-	done
-	git_upd_check
-	echo -e "$(yellow "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")"
-	echo -e "$(green "                   NODE STATS")"
-	echo -e "$(yellow "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")"
-	echo
-	echo -e "$(green "      Delegate         : ")$(yellow "$DNAME")"
-	echo -e "$(green "      Forging          : ")$(yellow "$is_forging")"
-	echo -e "$(green "      Current Rank     : ")$(yellow "$RANK")"
-	echo -e "$(green "      Forging Position : ")$(yellow "$turn")"
-	echo -e "$(green "      Node Blockheight : ")$(yellow "$HEIGHT")"
-	echo -e "$(green "      Net Height       : ")$(yellow "$highest")"
-#	echo -e "$(green "Public Key:")\n$(yellow "$PUBKEY")\n"
-	echo -e "$(green "      Forged Blocks    : ")$(yellow "$PROD_BLOCKS")"
-	echo -e "$(green "      Missed Blocks    : ")$(yellow "$MISS_BLOCKS")"
-	echo -e "$(green "      ARK Balance      : ")$(yellow "$BALANCE")"
-	echo
-	echo -e "\n$(yellow "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")"
+#   trap : INT
+    query
+    net_height
+    asciiart
+    proc_vars
+    queue=`curl --connect-timeout 3 -f -s $LOC_SERVER/api/delegates/getNextForgers?limit=51 | jq ".delegates"`
+    is_forging=`curl -s --connect-timeout 1 $LOC_SERVER/api/delegates/forging/status?publicKey=$PUBKEY 2>/dev/null | jq ".enabled"`
+    is_syncing=`curl -s --connect-timeout 1 $LOC_SERVER/api/loader/status/sync 2>/dev/null | jq ".syncing"`
+    pos=0
+    for position in $queue
+    do
+        position=`echo "$position" | tr -d '",'`
+        if [[ $PUBKEY == $position ]]; then
+#           echo "$position : $pos <=="
+            turn=$pos
+        fi
+        pos=`expr $pos + 1`
+    done
+    git_upd_check
+    echo -e "$(yellow "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")"
+    echo -e "$(green "                   NODE STATS")"
+    echo -e "$(yellow "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")"
+    echo
+    echo -e "$(green "      Delegate         : ")$(yellow "$DNAME")"
+    echo -e "$(green "      Forging          : ")$(yellow "$is_forging")"
+    echo -e "$(green "      Current Rank     : ")$(yellow "$RANK")"
+    echo -e "$(green "      Forging Position : ")$(yellow "$turn")"
+    echo -e "$(green "      Node Blockheight : ")$(yellow "$HEIGHT")"
+    echo -e "$(green "      Net Height       : ")$(yellow "$highest")"
+#   echo -e "$(green "Public Key:")\n$(yellow "$PUBKEY")\n"
+    echo -e "$(green "      Forged Blocks    : ")$(yellow "$PROD_BLOCKS")"
+    echo -e "$(green "      Missed Blocks    : ")$(yellow "$MISS_BLOCKS")"
+    echo -e "$(green "      ARK Balance      : ")$(yellow "$BALANCE")"
+    echo
+    echo -e "\n$(yellow "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")"
         if [ -e $arkdir/app.js ]; then
                 echo -e "\n$(green "       ✔ ARK Node installation found!")\n"
                 if [ "$node" != "" ] && [ "$node" != "0" ]; then
@@ -315,9 +282,9 @@ while true; do
         else
                 echo -e "\n$(red "       ✘ No ARK Node installation is found")\n"
         fi
-	echo -e "\n$(yellow "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")"
-	echo -e "\n$(yellow "          Press 'Enter' to terminate          ")"
-	read -t 4 && break
+    echo -e "\n$(yellow "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")"
+    echo -e "\n$(yellow "          Press 'Enter' to terminate          ")"
+    read -t 4 && break
 
 #sleep 4
 done
@@ -325,74 +292,74 @@ done
 
 # Stats Display
 function stats {
-	asciiart
-	proc_vars
-	is_forging=`curl -s --connect-timeout 1 $LOC_SERVER/api/delegates/forging/status?publicKey=$pubkey 2>/dev/null | jq ".enabled"`
-	is_syncing=`curl -s --connect-timeout 1 $LOC_SERVER/api/loader/status/sync 2>/dev/null | jq ".syncing"`
+    asciiart
+    proc_vars
+    is_forging=`curl -s --connect-timeout 1 $LOC_SERVER/api/delegates/forging/status?publicKey=$pubkey 2>/dev/null | jq ".enabled"`
+    is_syncing=`curl -s --connect-timeout 1 $LOC_SERVER/api/loader/status/sync 2>/dev/null | jq ".syncing"`
 
-	if [ "$node" != "" ] && [ "$node" != "0" ]; then
-		echo -e "$(green "       Instance of ARK Node found with:")"
-		echo -e "$(green "       System PID: $node, Forever PID $forever_process")"
-		echo -e "$(green "       Directory: $arkdir")\n"
-	else
-		echo -e "\n$(red "       ✘ ARK Node process is not running")\n"
-		pause
-	fi
+    if [ "$node" != "" ] && [ "$node" != "0" ]; then
+        echo -e "$(green "       Instance of ARK Node found with:")"
+        echo -e "$(green "       System PID: $node, Forever PID $forever_process")"
+        echo -e "$(green "       Directory: $arkdir")\n"
+    else
+        echo -e "\n$(red "       ✘ ARK Node process is not running")\n"
+        pause
+    fi
 
 }
 
 # Updating the locate database
 function db_up {
-	echo -e "$(red "Please enter your sudo password for user $USER")"
-	sudo updatedb
+    echo -e "$(red "Please enter your sudo password for user $USER")"
+    sudo updatedb
 }
 
 # Update and upgrade the OS
 function os_up {
-	asciiart
-	echo -e "$(yellow "        Checking for system updates...")\n"
-	sudo apt-get update >&- 2>&- #-yqq 2>/dev/null
-	avail_upd=`/usr/lib/update-notifier/apt-check 2>&1 | cut -d ';' -f 1`
-	sec_upd=`/usr/lib/update-notifier/apt-check 2>&1 | cut -d ';' -f 2`
-		if [ "$avail_upd" == 0 ]; then
-		        echo -e "$(green "        There are no updates available")\n"
-		        sleep 1
-		else
-			echo -e "\n$(red "        There are $avail_upd updates available")"
-			echo -e "$(red "        $sec_upd of them are security updates")"
-			echo -e "\n$(yellow "            Updating the system...")"
-			sudo apt-get upgrade -yqq >&- 2>&- #2>/dev/null
-			sudo apt-get dist-upgrade -yq >&- 2>&- #2>/dev/null
-			#sudo apt-get purge nodejs postgresql postgresql-contrib samba*
-			sudo apt-get autoremove -yyq >&- 2>&- #2>/dev/null
-			sudo apt-get autoclean -yq >&- 2>&- #2>/dev/null
-			echo -e "\n$(green "          ✔ The system was updated!")"
-			echo -e "\n$(red "        System restart is recommended!\n")"
-		fi
+    asciiart
+    echo -e "$(yellow "        Checking for system updates...")\n"
+    sudo apt-get update >&- 2>&- #-yqq 2>/dev/null
+    avail_upd=`/usr/lib/update-notifier/apt-check 2>&1 | cut -d ';' -f 1`
+    sec_upd=`/usr/lib/update-notifier/apt-check 2>&1 | cut -d ';' -f 2`
+        if [ "$avail_upd" == 0 ]; then
+                echo -e "$(green "        There are no updates available")\n"
+                sleep 1
+        else
+            echo -e "\n$(red "        There are $avail_upd updates available")"
+            echo -e "$(red "        $sec_upd of them are security updates")"
+            echo -e "\n$(yellow "            Updating the system...")"
+            sudo apt-get upgrade -yqq >&- 2>&- #2>/dev/null
+            sudo apt-get dist-upgrade -yq >&- 2>&- #2>/dev/null
+            #sudo apt-get purge nodejs postgresql postgresql-contrib samba*
+            sudo apt-get autoremove -yyq >&- 2>&- #2>/dev/null
+            sudo apt-get autoclean -yq >&- 2>&- #2>/dev/null
+            echo -e "\n$(green "          ✔ The system was updated!")"
+            echo -e "\n$(red "        System restart is recommended!\n")"
+        fi
 }
 
 # Install prerequisites
 function prereq {
-	# Get array length
+    # Get array length
         arraylength=${#array[@]}
 
         # Installation loop
         echo -e "$(yellow "-----------------------------------------------")"
         for (( i=1; i<${arraylength}+1; i++ ));
-		do
-			asciiart;
-          		echo -e "$(yellow "         Installing prerequisites...") "
-          		echo -e "$(yellow "-----------------------------------------------")" # added
-               		echo -e "$(yellow "  $i  /  ${arraylength}  :  ${array[$i-1]}")"
-			if [ $(dpkg-query -W -f='${Status}' ${array[$i-1]} 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
-                        	sudo apt-get install -yqq >&- 2>&- ${array[$i-1]};
-                	else
-                        	echo "$(green " Package: ${array[$i-1]} is already installed!")"
-                	fi
-                	echo -e "$(yellow "-----------------------------------------------")"
-		        sleep 0.5
-		        clear
-		done
+        do
+            asciiart;
+                echo -e "$(yellow "         Installing prerequisites...") "
+                echo -e "$(yellow "-----------------------------------------------")" # added
+                    echo -e "$(yellow "  $i  /  ${arraylength}  :  ${array[$i-1]}")"
+            if [ $(dpkg-query -W -f='${Status}' ${array[$i-1]} 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
+                            sudo apt-get install -yqq >&- 2>&- ${array[$i-1]};
+                    else
+                            echo "$(green " Package: ${array[$i-1]} is already installed!")"
+                    fi
+                    echo -e "$(yellow "-----------------------------------------------")"
+                sleep 0.5
+                clear
+        done
 }
 
 # Install and set locale
@@ -455,9 +422,9 @@ function ntpd {
                         sudo apt-get install ntp -yyq &>> $log
                         sudo service ntp stop &>> $log
                         sudo ntpd -gq &>> $log
-			sleep 2
+            sleep 2
                         sudo service ntp start &>> $log
-			sleep 2
+            sleep 2
                                 if ! sudo pgrep -x "ntpd" > /dev/null; then
                                         echo -e "NTP failed to start! It should be installed and running for ARK.\n Check /etc/ntp.conf for any issues and correct them first! \n Exiting."
                                         exit 1
@@ -472,11 +439,11 @@ function ntpd {
 
 # Logrotate for Ark Node logs
 function log_rotate {
-	if [[ "$(uname)" == "Linux" ]]; then
+    if [[ "$(uname)" == "Linux" ]]; then
 
-		if [ ! -f /etc/logrotate.d/ark-logrotate ]; then
-			echo -e " Setting up Logrotate for ARK node log files."
-			sudo bash -c "cat << 'EOF' >> /etc/logrotate.d/ark-logrotate
+        if [ ! -f /etc/logrotate.d/ark-logrotate ]; then
+            echo -e " Setting up Logrotate for ARK node log files."
+            sudo bash -c "cat << 'EOF' >> /etc/logrotate.d/ark-logrotate
 $arkdir/logs/ark.log {
         size=50M
         copytruncate
@@ -491,37 +458,37 @@ $arkdir/logs/ark.log {
         maxage 7
 }
 EOF"
-		else
-			echo -e "$(green "      ✔ Logrotate file already exists!")\n"
-		fi
-	fi
+        else
+            echo -e "$(green "      ✔ Logrotate file already exists!")\n"
+        fi
+    fi
 }
 
 # GIT Update Check
 function git_upd_check {
 
-	if [ -d "$arkdir" ]; then
+    if [ -d "$arkdir" ]; then
 
-		cd $arkdir
+        cd $arkdir
 
-		git remote update >&- 2>&-
-		UPSTREAM=${1:-'@{u}'}
-		LOCAL=$(git rev-parse @)
-		REMOTE=$(git rev-parse "$UPSTREAM")
-		BASE=$(git merge-base @ "$UPSTREAM")
+        git remote update >&- 2>&-
+        UPSTREAM=${1:-'@{u}'}
+        LOCAL=$(git rev-parse @)
+        REMOTE=$(git rev-parse "$UPSTREAM")
+        BASE=$(git merge-base @ "$UPSTREAM")
 
-		cd $HOME
+        cd $HOME
 
-		if [ "$LOCAL" == "$REMOTE" ]; then
-			echo -e "         $(igreen "    ARK Node is Up-to-date    \n")"
-			UP_TO_DATE=1
-		elif [ "$LOCAL" == "$BASE" ]; then
-			echo -e "         $(ired "   Please Update! Press (3)    \n")"
-			UP_TO_DATE=0
-		else
-			echo -e "         $(ired "           Diverged            \n")"
-		fi
-	fi
+        if [ "$LOCAL" == "$REMOTE" ]; then
+            echo -e "         $(igreen "    ARK Node is Up-to-date    \n")"
+            UP_TO_DATE=1
+        elif [ "$LOCAL" == "$BASE" ]; then
+            echo -e "         $(ired "   Please Update! Press (3)    \n")"
+            UP_TO_DATE=0
+        else
+            echo -e "         $(ired "           Diverged            \n")"
+        fi
+    fi
 
 }
 
@@ -535,59 +502,59 @@ function purge_pgdb {
         if [ $(dpkg-query -W -f='${Status}' postgresql } 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
                 echo "$(green "  Postgres is not installed, nothing to purge. Exiting.") "
         else
-	echo -e "    $(ired "                                        ")"
-	echo -e "    $(ired "   WARNING! This option will stop all   ")"
-	echo -e "    $(ired "   running ARK Node processes and will  ")"
-	echo -e "    $(ired "   remove the databases and PostgreSQL  ")"
-	echo -e "    $(ired "   installation! Are you REALLY sure?   ")"
-	echo -e "    $(ired "                                        ")"
-	read -e -r -p "$(yellow "\n    Type (Y) to proceed or (N) to cancel: ")" -i "N" YN
-		if [[ "$YN" =~ [Yy]$ ]]; then
-			echo -e "$(yellow "\n     Proceeding with PostgreSQL removal... \n")"
-			forever --silent --plain stopall
-			sleep 1
-			drop_db
-			drop_user
+    echo -e "    $(ired "                                        ")"
+    echo -e "    $(ired "   WARNING! This option will stop all   ")"
+    echo -e "    $(ired "   running ARK Node processes and will  ")"
+    echo -e "    $(ired "   remove the databases and PostgreSQL  ")"
+    echo -e "    $(ired "   installation! Are you REALLY sure?   ")"
+    echo -e "    $(ired "                                        ")"
+    read -e -r -p "$(yellow "\n    Type (Y) to proceed or (N) to cancel: ")" -i "N" YN
+        if [[ "$YN" =~ [Yy]$ ]]; then
+            echo -e "$(yellow "\n     Proceeding with PostgreSQL removal... \n")"
+            forever --silent --plain stopall
+            sleep 1
+            drop_db
+            drop_user
 
-        		# stop the DB if running first...
-		        sudo service postgresql stop
-		        sleep 1
-		        sudo apt --purge remove -yq postgresql\* >&- 2>&-
-		        sudo rm -rf /etc/postgresql/ >&- 2>&-
-		        sudo rm -rf /etc/postgresql-common/ >&- 2>&-
-		        sudo rm -rf /var/lib/postgresql/ >&- 2>&-
-		        sudo userdel -r postgres >&- 2>&-
-		        sudo groupdel postgres >&- 2>&-
-			echo -e "$(yellow "\n          PostgreSQL has been removed\n")"
+                # stop the DB if running first...
+                sudo service postgresql stop
+                sleep 1
+                sudo apt --purge remove -yq postgresql\* >&- 2>&-
+                sudo rm -rf /etc/postgresql/ >&- 2>&-
+                sudo rm -rf /etc/postgresql-common/ >&- 2>&-
+                sudo rm -rf /var/lib/postgresql/ >&- 2>&-
+                sudo userdel -r postgres >&- 2>&-
+                sudo groupdel postgres >&- 2>&-
+            echo -e "$(yellow "\n          PostgreSQL has been removed\n")"
 
-			read -e -r -p "$(yellow "\n  Proceed with PostgreSQL installation (Y/n): ")" -i "Y" YN
-			if [[ "$YN" =~ [Yy]$ ]]; then
-				echo -e "$(yellow "\n   Proceeding with PostgreSQL installation... \n")"
-				inst_pgdb
-				create_db
-				echo -e "$(yellow "\n    PostgreSQL has been installed and set.\n")"
-				pause
-			fi
-		fi
+            read -e -r -p "$(yellow "\n  Proceed with PostgreSQL installation (Y/n): ")" -i "Y" YN
+            if [[ "$YN" =~ [Yy]$ ]]; then
+                echo -e "$(yellow "\n   Proceeding with PostgreSQL installation... \n")"
+                inst_pgdb
+                create_db
+                echo -e "$(yellow "\n    PostgreSQL has been installed and set.\n")"
+                pause
+            fi
+        fi
         fi
 }
 
 function snap_menu {
 if [ ! -d "$SNAPDIR" ]; then
-	mkdir -p $SNAPDIR
+    mkdir -p $SNAPDIR
 fi
 
 if [ "$(ls -A $SNAPDIR)" ]; then
-	if [[ $(expr `date +%s` - `stat -c %Y $SNAPDIR/current`) -gt 900 ]]; then
-		echo -e "$(yellow " Existing Current snapshot is older than 15 minutes")"
-        	read -e -r -p "$(yellow "\n Download from ARK.IO? (Y) or use Local (N) ")" -i "Y" YN
-			if [[ "$YN" =~ [Yy]$ ]]; then
-				echo -e "$(yellow "\n     Downloading latest snapshot from ARK.IO\n")"
-				rm $SNAPDIR/current
-				wget -nv https://snapshots.ark.io/current -O $SNAPDIR/current
-				echo -e "$(yellow "\n              Download finished\n")"
-			fi
-	fi
+    if [[ $(expr `date +%s` - `stat -c %Y $SNAPDIR/current`) -gt 900 ]]; then
+        echo -e "$(yellow " Existing Current snapshot is older than 15 minutes")"
+            read -e -r -p "$(yellow "\n Download from ARK.IO? (Y) or use Local (N) ")" -i "Y" YN
+            if [[ "$YN" =~ [Yy]$ ]]; then
+                echo -e "$(yellow "\n     Downloading latest snapshot from ARK.IO\n")"
+                rm $SNAPDIR/current
+                wget -nv https://snapshots.ark.io/current -O $SNAPDIR/current
+                echo -e "$(yellow "\n              Download finished\n")"
+            fi
+    fi
 
         snapshots=( $(ls -t $SNAPDIR | xargs -0) )
         echo -e "$(yellow "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")"
@@ -606,32 +573,32 @@ if [ "$(ls -A $SNAPDIR)" ]; then
         ## Numeric checks
                 if [ $REPLY -le ${#snapshots[*]} ]; then
                         echo -e "$(yellow "\n         Restoring snapshot ${snapshots[$((REPLY-1))]}")\n"
-			pg_restore -O -j 8 -d ark_mainnet $SNAPDIR/${snapshots[$(($REPLY-1))]} 2>/dev/null
-			echo -e "$(green "   Snapshot ${snapshots[$(($REPLY-1))]} was restored successfully")\n"
+            pg_restore -O -j 8 -d ark_mainnet $SNAPDIR/${snapshots[$(($REPLY-1))]} 2>/dev/null
+            echo -e "$(green "   Snapshot ${snapshots[$(($REPLY-1))]} was restored successfully")\n"
                 else
                         echo -e "$(red "\n        Value is out of list range!\n")"
-			snap_menu
+            snap_menu
                 fi
         else
                 echo -e "$(red "\n             $REPLY is not a number!\n")"
-		snap_menu
+        snap_menu
         fi
 else
         echo -e "$(red "    No snapshots found in $SNAPDIR")"
         read -e -r -p "$(yellow "\n Do you like to download the latest snapshot? (Y/n) ")" -i "Y" YN
         if [[ "$YN" =~ [Yy]$ ]]; then
-		echo -e "$(yellow "\n     Downloading current snapshot from ARK.IO\n")"
+        echo -e "$(yellow "\n     Downloading current snapshot from ARK.IO\n")"
                 wget -nv https://snapshots.ark.io/current -O $SNAPDIR/current
-		echo -e "$(yellow "\n              Download finished\n")"
+        echo -e "$(yellow "\n              Download finished\n")"
         fi
 
         if [[ $? -eq 0 ]]; then
                 read -e -r -p "$(yellow "  Do you like to restore the snapshot now? (Y/n) ")" -i "Y" YN
                         if [[ "$YN" =~ [Yy]$ ]]; then
                                 #here calling the db_restore function
-				echo -e "$(yellow "\n   Restoring $SNAPDIR/current ... ")"
+                echo -e "$(yellow "\n   Restoring $SNAPDIR/current ... ")"
                                 pg_restore -O -j 8 -d ark_mainnet $SNAPDIR/current 2>/dev/null
-				echo -e "$(green "\n    Current snapshot has been restored\n")"
+                echo -e "$(green "\n    Current snapshot has been restored\n")"
                         fi
         else
                 echo -e "$(red "\n    Error while retriving the snapshot")"
@@ -700,13 +667,13 @@ function nvm {
 
 # Install ARK Node
 function inst_ark {
-#	proc_vars
-	cd $HOME
+#   proc_vars
+    cd $HOME
         mkdir ark-node
         git clone https://github.com/ArkEcosystem/ark-node.git 2>/dev/null
         cd ark-node
-	git checkout $GIT_ORIGIN 2>/dev/null
-	git pull origin $GIT_ORIGIN 2>/dev/null
+    git checkout $GIT_ORIGIN 2>/dev/null
+    git pull origin $GIT_ORIGIN 2>/dev/null
         npm install grunt-cli -g 2>/dev/null
         npm install libpq 2>/dev/null
         npm install secp256k1 2>/dev/null
@@ -727,8 +694,8 @@ function create_db {
 #       sleep 1
 #       sudo -u postgres dropuser --if-exists $USER # 2>&1
 #       sleep 1
-	sudo -u postgres psql -c "update pg_database set encoding = 6, datcollate = 'en_US.UTF8', datctype = 'en_US.UTF8' where datname = 'template0';" >&- 2>&-
-	sudo -u postgres psql -c "update pg_database set encoding = 6, datcollate = 'en_US.UTF8', datctype = 'en_US.UTF8' where datname = 'template1';" >&- 2>&-
+    sudo -u postgres psql -c "update pg_database set encoding = 6, datcollate = 'en_US.UTF8', datctype = 'en_US.UTF8' where datname = 'template0';" >&- 2>&-
+    sudo -u postgres psql -c "update pg_database set encoding = 6, datcollate = 'en_US.UTF8', datctype = 'en_US.UTF8' where datname = 'template1';" >&- 2>&-
         sudo -u postgres psql -c "CREATE USER $USER WITH PASSWORD 'password' CREATEDB;" >&- 2>&-
         sleep 1
         createdb ark_mainnet
@@ -785,36 +752,36 @@ function drop_user {
         fi
 
         if [[ $(sudo -u postgres psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='$USER'" 2>&1) ]]; then
-		sudo -u postgres dropuser --if-exists $USER
+        sudo -u postgres dropuser --if-exists $USER
         else
                 echo "DB User $USER does not exist"
         fi
 }
 
 function update_ark {
-	if [ "$UP_TO_DATE" -ne 1 ]; then
-	        cd $arkdir
-#       	 forever stop app.js
-		TMP_PASS=$(jq -r '.forging.secret | @csv' config.$GIT_ORIGIN.json)
-		mv config.mainnet.json ../
-	        git pull origin $GIT_ORIGIN
-		git checkout $GIT_ORIGIN
-	        npm install
-		sleep 1
+    if [ "$UP_TO_DATE" -ne 1 ]; then
+            cd $arkdir
+#            forever stop app.js
+        TMP_PASS=$(jq -r '.forging.secret | @csv' config.$GIT_ORIGIN.json)
+        mv config.mainnet.json ../
+            git pull origin $GIT_ORIGIN
+        git checkout $GIT_ORIGIN
+            npm install
+        sleep 1
 
-		if [ ! -e config.$GIT_ORIGIN.json ]; then
-			mv ../config.$GIT_ORIGIN.json .
-		else
-			jq -r '.forging.secret = ['"$TMP_PASS"']' config.$GIT_ORIGIN.json > config.$GIT_ORIGIN.tmp && mv config.$GIT_ORIGIN.tmp config.$GIT_ORIGIN.json
-		fi
+        if [ ! -e config.$GIT_ORIGIN.json ]; then
+            mv ../config.$GIT_ORIGIN.json .
+        else
+            jq -r '.forging.secret = ['"$TMP_PASS"']' config.$GIT_ORIGIN.json > config.$GIT_ORIGIN.tmp && mv config.$GIT_ORIGIN.tmp config.$GIT_ORIGIN.json
+        fi
 
-		unset TMP_PASS
-#		forever restart $forever_process
-#	        forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json
-	else
-		echo "ARK Node is already up to date!"
-		sleep 2
-	fi
+        unset TMP_PASS
+#       forever restart $forever_process
+#           forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json
+    else
+        echo "ARK Node is already up to date!"
+        sleep 2
+    fi
 }
 
 # Put the password in config.mainnet.json
@@ -834,154 +801,154 @@ function secret {
 
 # Install ARK node
 one(){
-	cd $HOME
-	proc_vars
-	if [ -e $arkdir/app.js ]; then
-		clear
-		asciiart
-		echo -e "\n$(green "       ✔ ARK Node is already installed!")\n"
-		if [ "$node" != "" ] && [ "$node" != "0" ]; then
-                	echo -e "$(green "A working instance of ARK Node is found with:")"
-                	echo -e "$(green "System PID: $node, Forever PID $forever_process")"
-        	        echo -e "$(green "and Work Directory: $arkdir")\n"
+    cd $HOME
+    proc_vars
+    if [ -e $arkdir/app.js ]; then
+        clear
+        asciiart
+        echo -e "\n$(green "       ✔ ARK Node is already installed!")\n"
+        if [ "$node" != "" ] && [ "$node" != "0" ]; then
+                    echo -e "$(green "A working instance of ARK Node is found with:")"
+                    echo -e "$(green "System PID: $node, Forever PID $forever_process")"
+                    echo -e "$(green "and Work Directory: $arkdir")\n"
                 fi
-		pause
-	else
-		clear
-		asciiart
-		echo -e "$(yellow "           Installing ARK node....")"
-		create_db
-		inst_ark
-		clear
-		asciiart
-		echo -e "$(green "          ✔ ARK node was installed")\n"
-		sudo updatedb
-		sleep 1
-		proc_vars
-		log_rotate
-		config="$parent/config.mainnet.json"
-#		echo "$config" 2>/dev/null
-#		pause
-		if  [ ! -e $config ] ; then
-			read -e -r -p "$(yellow " Do you want to set your Secret Key now? (Y/N): ")" -i "Y" keys
-			if [ "$keys" == "Y" ]; then
-				five
-			fi
-		fi
-	fi
+        pause
+    else
+        clear
+        asciiart
+        echo -e "$(yellow "           Installing ARK node....")"
+        create_db
+        inst_ark
+        clear
+        asciiart
+        echo -e "$(green "          ✔ ARK node was installed")\n"
+        sudo updatedb
+        sleep 1
+        proc_vars
+        log_rotate
+        config="$parent/config.mainnet.json"
+#       echo "$config" 2>/dev/null
+#       pause
+        if  [ ! -e $config ] ; then
+            read -e -r -p "$(yellow " Do you want to set your Secret Key now? (Y/N): ")" -i "Y" keys
+            if [ "$keys" == "Y" ]; then
+                five
+            fi
+        fi
+    fi
 }
 
 # Reinstall ARK Node
 two(){
-	clear
-	asciiart
-	echo -e "$(ired "!!! This option will erase your DB and ARK Node installation !!!")\n"
-	read -e -r -p "$(red "   Are you sure that you want to proceed? (Y/N): ")" -i "N" keys
-	if [ "$keys" == "Y" ]; then
-		proc_vars
-        	if [ -e $arkdir/app.js ]; then
-                	clear
-                	asciiart
-                	echo -e "\n$(green " ✔ ARK Node installation found in $arkdir")\n"
-                	if [ "$node" != "" ] && [ "$node" != "0" ]; then
-                        	echo -e "$(green "A working instance of ARK Node is found with:")"
-                        	echo -e "$(green "System PID: $node, Forever PID $forever_process")"
-				echo -e "$(yellow "           Stopping ARK node ...")\n"
-				cd $arkdir
-				forever --plain stop $forever_process >&- 2>&-
-				cd $parent
-                	fi
-			echo -e "$(yellow "    Backing up configuration file to $parent")\n"
-			sleep 1
-			if [ -e $parent/config.mainnet.json ] ; then
-				read -e -r -p "$(yellow "    Backup file exists! Overwrite? (Y/N): ")" -i "Y" keys
-				if [ "$keys" == "Y" ]; then
-					cp $arkdir/config.mainnet.json $parent
-					cd $parent
-				fi
-			else
-				cp $arkdir/config.mainnet.json $parent
-				cd $parent
-			fi
-			echo -e "$(yellow "        Removing ARK Node directory...")\n"
-			sleep 1
-			rm -rf $arkdir
-			drop_db
-			drop_user
-			one
-			echo ""
-			if [ -e $parent/config.mainnet.json ] ; then
-				read -e -r -p "$(yellow " Do you want to restore your config? (Y/N): ")" -i "Y" keys
-#				echo "Break1"; pause
-				if [ "$keys" == "Y" ]; then
-					cp $parent/config.mainnet.json $arkdir
-					echo -e "\n$(green " ✔ Config was restored in $arkdir")\n"
-					read -e -r -p "$(yellow " Do you want to start ARK Node now? (Y/N): ")" -i "Y" keys
-					if [ "$keys" == "Y" ]; then
-						start
-					fi
-				else
-					read -e -r -p "$(yellow " Do you want to start ARK Node now? (Y/N): ")" -i "Y" keys
-					if [ "$keys" == "Y" ]; then
-						start
-					fi
-				fi
-			fi
-		else
-			echo -e "\n$(green "    ✔ Previous installation not found.")\n"
-			drop_db
-			drop_user
-			sleep 1
-			one
-			proc_vars
-			if [ -e $parent/config.mainnet.json ] ; then
-				read -e -r -p "$(yellow " Do you want to restore your config? (Y/N): ")" -i "Y" keys
-				if [ "$keys" == "Y" ]; then
-					cp $parent/config.mainnet.json $arkdir
-					echo -e "\n$(green " ✔ Config was restored in $arkdir")\n"
-				fi
-			else
-				echo -e "\n$(yellow " No backup config was found in $parent")\n"
-				read -e -r -p "$(yellow " Do you want to set your Secret Key now? (Y/N): ")" -i "Y" keys
-				if [ "$keys" == "Y" ]; then
-					secret
-				fi
-			fi
-#			echo "Break2"; pause
-			read -e -r -p "$(yellow " Do you want to start ARK Node now? (Y/N): ")" -i "Y" keys
-			if [ "$keys" == "Y" ]; then
-				start
-			fi
-		fi
-	fi
+    clear
+    asciiart
+    echo -e "$(ired "!!! This option will erase your DB and ARK Node installation !!!")\n"
+    read -e -r -p "$(red "   Are you sure that you want to proceed? (Y/N): ")" -i "N" keys
+    if [ "$keys" == "Y" ]; then
+        proc_vars
+            if [ -e $arkdir/app.js ]; then
+                    clear
+                    asciiart
+                    echo -e "\n$(green " ✔ ARK Node installation found in $arkdir")\n"
+                    if [ "$node" != "" ] && [ "$node" != "0" ]; then
+                            echo -e "$(green "A working instance of ARK Node is found with:")"
+                            echo -e "$(green "System PID: $node, Forever PID $forever_process")"
+                echo -e "$(yellow "           Stopping ARK node ...")\n"
+                cd $arkdir
+                forever --plain stop $forever_process >&- 2>&-
+                cd $parent
+                    fi
+            echo -e "$(yellow "    Backing up configuration file to $parent")\n"
+            sleep 1
+            if [ -e $parent/config.mainnet.json ] ; then
+                read -e -r -p "$(yellow "    Backup file exists! Overwrite? (Y/N): ")" -i "Y" keys
+                if [ "$keys" == "Y" ]; then
+                    cp $arkdir/config.mainnet.json $parent
+                    cd $parent
+                fi
+            else
+                cp $arkdir/config.mainnet.json $parent
+                cd $parent
+            fi
+            echo -e "$(yellow "        Removing ARK Node directory...")\n"
+            sleep 1
+            rm -rf $arkdir
+            drop_db
+            drop_user
+            one
+            echo ""
+            if [ -e $parent/config.mainnet.json ] ; then
+                read -e -r -p "$(yellow " Do you want to restore your config? (Y/N): ")" -i "Y" keys
+#               echo "Break1"; pause
+                if [ "$keys" == "Y" ]; then
+                    cp $parent/config.mainnet.json $arkdir
+                    echo -e "\n$(green " ✔ Config was restored in $arkdir")\n"
+                    read -e -r -p "$(yellow " Do you want to start ARK Node now? (Y/N): ")" -i "Y" keys
+                    if [ "$keys" == "Y" ]; then
+                        start
+                    fi
+                else
+                    read -e -r -p "$(yellow " Do you want to start ARK Node now? (Y/N): ")" -i "Y" keys
+                    if [ "$keys" == "Y" ]; then
+                        start
+                    fi
+                fi
+            fi
+        else
+            echo -e "\n$(green "    ✔ Previous installation not found.")\n"
+            drop_db
+            drop_user
+            sleep 1
+            one
+            proc_vars
+            if [ -e $parent/config.mainnet.json ] ; then
+                read -e -r -p "$(yellow " Do you want to restore your config? (Y/N): ")" -i "Y" keys
+                if [ "$keys" == "Y" ]; then
+                    cp $parent/config.mainnet.json $arkdir
+                    echo -e "\n$(green " ✔ Config was restored in $arkdir")\n"
+                fi
+            else
+                echo -e "\n$(yellow " No backup config was found in $parent")\n"
+                read -e -r -p "$(yellow " Do you want to set your Secret Key now? (Y/N): ")" -i "Y" keys
+                if [ "$keys" == "Y" ]; then
+                    secret
+                fi
+            fi
+#           echo "Break2"; pause
+            read -e -r -p "$(yellow " Do you want to start ARK Node now? (Y/N): ")" -i "Y" keys
+            if [ "$keys" == "Y" ]; then
+                start
+            fi
+        fi
+    fi
 }
 
 three(){
         asciiart
         proc_vars
-	if [ "$UP_TO_DATE" -ne 1 ]; then
-	        if [ "$node" != "" ] && [ "$node" != "0" ]; then
-        	        echo -e "$(green "       Instance of ARK Node found with:")"
-                	echo -e "$(green "       System PID: $node, Forever PID $forever_process")"
-	                echo -e "$(green "       Directory: $arkdir")\n"
-			echo -e "\n$(green "             Updating ARK Node...")\n"
-			update_ark
-	                echo -e "$(green "                Restarting...")"
-        	        forever restart $forever_process >&- 2>&-
-                	echo -e "\n$(green "    ✔ ARK Node was successfully restarted")\n"
-	                pause
-		else
-                	echo -e "\n$(red "       ✘ ARK Node process is not running")\n"
-			echo -e "$(green "            Updating ARK Node...")\n"
-			update_ark
-			forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
-			echo -e "$(green "    ✔ ARK Node was successfully started")\n"
-        	        pause
-        	fi
-	else
-			echo -e "         $(igreen " ARK Node is already Up-to-date \n")"
-			sleep 2
-	fi
+    if [ "$UP_TO_DATE" -ne 1 ]; then
+            if [ "$node" != "" ] && [ "$node" != "0" ]; then
+                    echo -e "$(green "       Instance of ARK Node found with:")"
+                    echo -e "$(green "       System PID: $node, Forever PID $forever_process")"
+                    echo -e "$(green "       Directory: $arkdir")\n"
+            echo -e "\n$(green "             Updating ARK Node...")\n"
+            update_ark
+                    echo -e "$(green "                Restarting...")"
+                    forever restart $forever_process >&- 2>&-
+                    echo -e "\n$(green "    ✔ ARK Node was successfully restarted")\n"
+                    pause
+        else
+                    echo -e "\n$(red "       ✘ ARK Node process is not running")\n"
+            echo -e "$(green "            Updating ARK Node...")\n"
+            update_ark
+            forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
+            echo -e "$(green "    ✔ ARK Node was successfully started")\n"
+                    pause
+            fi
+    else
+            echo -e "         $(igreen " ARK Node is already Up-to-date \n")"
+            sleep 2
+    fi
 
 }
 
@@ -993,32 +960,32 @@ four(){
                 echo -e "$(green "       System PID: $node, Forever PID $forever_process")"
                 echo -e "$(green "       Directory: $arkdir")\n"
                 echo -e "\n$(green "            Stopping ARK Node...")\n"
-		cd $arkdir
-		forever stop $forever_process >&- 2>&-
-		echo -e "$(green "             Dropping ARK DB...")\n"
+        cd $arkdir
+        forever stop $forever_process >&- 2>&-
+        echo -e "$(green "             Dropping ARK DB...")\n"
                 drop_db
-		drop_user
-		echo -e "$(green "             Creating ARK DB...")\n"
-		create_db
+        drop_user
+        echo -e "$(green "             Creating ARK DB...")\n"
+        create_db
 
-		# Here should come the snap choice
-		snap_menu
+        # Here should come the snap choice
+        snap_menu
                 echo -e "$(green "            Starting ARK Node...")"
-		forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
+        forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
                 echo -e "\n$(green "    ✔ ARK Node was successfully started")\n"
                 pause
         else
                 echo -e "\n$(red "       ✘ ARK Node process is not running")\n"
                 echo -e "$(green "             Dropping ARK DB...")\n"
-		drop_db
-		drop_user
-		echo -e "$(green "             Creating ARK DB...")\n"
-		create_db
+        drop_db
+        drop_user
+        echo -e "$(green "             Creating ARK DB...")\n"
+        create_db
 
-		# Here should come the snap choice
-		snap_menu
-		echo -e "$(green "            Starting ARK Node...")"
-		cd $arkdir
+        # Here should come the snap choice
+        snap_menu
+        echo -e "$(green "            Starting ARK Node...")"
+        cd $arkdir
                 forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
                 echo -e "$(green "    ✔ ARK Node was successfully started")\n"
                 pause
@@ -1026,29 +993,29 @@ four(){
 }
 
 five(){
-	clear
-	asciiart
-	proc_vars
-	secret
-	echo -e "\n$(green "      ✔  Secret has been set/replaced")\n"
-	read -e -r -p "$(yellow " Do you want to apply your new config? (Y/N): ")" -i "Y" keys
-	if [ "$keys" == "Y" ]; then
-        	if [ "$node" != "" ] && [ "$node" != "0" ]; then
-			echo -e "\n$(green "       Instance of ARK Node found with:")"
-			echo -e "$(green "       System PID: $node, Forever PID $forever_process")"
-			echo -e "$(green "       Directory: $arkdir")\n"
-			echo -e "$(green "                Restarting...")"
-	                forever restart $forever_process >&- 2>&-
-			echo -e "\n$(green "    ✔ ARK Node was successfully restarted")\n"
-			pause
-		else
-			echo -e "\n$(red "       ✘ ARK Node process is not running")\n"
-			echo -e "$(green "            Starting ARK Node...")\n"
-			forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
-			echo -e "$(green "    ✔ ARK Node was successfully started")\n"
-			pause
-		fi
-	fi
+    clear
+    asciiart
+    proc_vars
+    secret
+    echo -e "\n$(green "      ✔  Secret has been set/replaced")\n"
+    read -e -r -p "$(yellow " Do you want to apply your new config? (Y/N): ")" -i "Y" keys
+    if [ "$keys" == "Y" ]; then
+            if [ "$node" != "" ] && [ "$node" != "0" ]; then
+            echo -e "\n$(green "       Instance of ARK Node found with:")"
+            echo -e "$(green "       System PID: $node, Forever PID $forever_process")"
+            echo -e "$(green "       Directory: $arkdir")\n"
+            echo -e "$(green "                Restarting...")"
+                    forever restart $forever_process >&- 2>&-
+            echo -e "\n$(green "    ✔ ARK Node was successfully restarted")\n"
+            pause
+        else
+            echo -e "\n$(red "       ✘ ARK Node process is not running")\n"
+            echo -e "$(green "            Starting ARK Node...")\n"
+            forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
+            echo -e "$(green "    ✔ ARK Node was successfully started")\n"
+            pause
+        fi
+    fi
 }
 
 # OS Update
@@ -1085,21 +1052,21 @@ start(){
                         echo -e "$(green " A working instance of ARK Node was found with:")"
                         echo -e "$(green "   System PID: $node, Forever PID $forever_process")"
                         echo -e "$(green "   and Work Directory: $arkdir")\n"
-		else
-			echo -e "$(green "            Starting ARK Node...")\n"
-			cd $arkdir
-			forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
-			cd $parent
-			echo -e "$(green "    ✔ ARK Node was successfully started")\n"
-			sleep 1
-			proc_vars
-			echo -e "\n$(green "       ARK Node started with:")"
-			echo -e "$(green "   System PID: $node, Forever PID $forever_process")"
-			echo -e "$(green "   and Work Directory: $arkdir")\n"
+        else
+            echo -e "$(green "            Starting ARK Node...")\n"
+            cd $arkdir
+            forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
+            cd $parent
+            echo -e "$(green "    ✔ ARK Node was successfully started")\n"
+            sleep 1
+            proc_vars
+            echo -e "\n$(green "       ARK Node started with:")"
+            echo -e "$(green "   System PID: $node, Forever PID $forever_process")"
+            echo -e "$(green "   and Work Directory: $arkdir")\n"
                 fi
-	else
-		echo -e "\n$(red "       ✘ No ARK Node installation is found")\n"
-	fi
+    else
+        echo -e "\n$(red "       ✘ No ARK Node installation is found")\n"
+    fi
 pause
 }
 
@@ -1124,20 +1091,20 @@ pause
 }
 
 restart(){
-	asciiart
-	proc_vars
-	if [ "$node" != "" ] && [ "$node" != "0" ]; then
+    asciiart
+    proc_vars
+    if [ "$node" != "" ] && [ "$node" != "0" ]; then
                 echo -e "$(green "       Instance of ARK Node found with:")"
                 echo -e "$(green "       System PID: $node, Forever PID $forever_process")"
                 echo -e "$(green "       Directory: $arkdir")\n"
-		echo -e "$(green "                Restarting...")"
-		forever restart $forever_process >&- 2>&-
-		echo -e "\n$(green "    ✔ ARK Node was successfully restarted")\n"
-		pause
-	else
-		echo -e "\n$(red "       ✘ ARK Node process is not running")\n"
-		pause
-	fi
+        echo -e "$(green "                Restarting...")"
+        forever restart $forever_process >&- 2>&-
+        echo -e "\n$(green "    ✔ ARK Node was successfully restarted")\n"
+        pause
+    else
+        echo -e "\n$(red "       ✘ ARK Node process is not running")\n"
+        pause
+    fi
 }
 
 # Stop Node
@@ -1151,13 +1118,13 @@ killit(){
                         echo -e "$(green " A working instance of ARK Node was found with:")"
                         echo -e "$(green "   System PID: $node, Forever PID $forever_process")"
                         echo -e "$(green "   and Work Directory: $arkdir")\n"
-			echo -e "$(green "            Stopping ARK Node...")\n"
-			cd $arkdir
-			forever stop $forever_process >&- 2>&-
-			cd $parent
-			echo -e "$(green "    ✔ ARK Node was successfully stopped")\n"
+            echo -e "$(green "            Stopping ARK Node...")\n"
+            cd $arkdir
+            forever stop $forever_process >&- 2>&-
+            cd $parent
+            echo -e "$(green "    ✔ ARK Node was successfully stopped")\n"
                 else
-			echo -e "\n$(red "       ✘ No ARK Node process is running")\n"
+            echo -e "\n$(red "       ✘ No ARK Node process is running")\n"
                 fi
         else
                 echo -e "\n$(red "       ✘ No ARK Node installation is found")\n"
@@ -1167,18 +1134,18 @@ pause
 
 # Logs
 log(){
-	clear
-	echo -e "\n$(yellow " Use Ctrl+C to return to menu")\n"
-	proc_vars
-	trap : INT
-	tail -f $arkdir/logs/ark.log
+    clear
+    echo -e "\n$(yellow " Use Ctrl+C to return to menu")\n"
+    proc_vars
+    trap : INT
+    tail -f $arkdir/logs/ark.log
 #pause
 }
 
 subfive(){
         clear
-	asciiart
-	purge_pgdb
+    asciiart
+    purge_pgdb
 
 }
 
@@ -1193,87 +1160,87 @@ subsix(){
 
 # Menu
 show_menus() {
-	tput bold; tput setaf 3
-	echo "         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-	echo "                  O P T I O N S"
-	echo "         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-	echo
-	echo "              1. Install ARK"
-	echo "              2. Reinstall ARK"
-	echo "              3. Update ARK"
-	echo "              4. Rebuild Database"
-	echo "              5. Set/Reset Secret"
-	echo "              6. OS Update"
-	echo "              7. Additional options"
-	echo
-	echo "         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-	echo
-	echo "              A. ARK Start"
-	echo "              R. Restart ARK"
-	echo "              K. Kill ARK"
-	echo "              S. Node Status"
+    tput bold; tput setaf 3
+    echo "         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    echo "                  O P T I O N S"
+    echo "         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    echo
+    echo "              1. Install ARK"
+    echo "              2. Reinstall ARK"
+    echo "              3. Update ARK"
+    echo "              4. Rebuild Database"
+    echo "              5. Set/Reset Secret"
+    echo "              6. OS Update"
+    echo "              7. Additional options"
+    echo
+    echo "         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    echo
+    echo "              A. ARK Start"
+    echo "              R. Restart ARK"
+    echo "              K. Kill ARK"
+    echo "              S. Node Status"
         echo "              L. Node Log"
-	echo "              0. Exit"
-	echo
-	tput sgr0
+    echo "              0. Exit"
+    echo
+    tput sgr0
 }
 
 # Sub Menu
 sub_menu() {
-	tput bold; tput setaf 3
-	echo "         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-	echo "               Additional Options"
-	echo "         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-	echo
-	echo "           1. Install ARK Cli"
-	echo "           2. Install ARK Explorer"
-	echo "           3. Install Snapshot script"
-	echo "           4. Install Restart script"
-	echo "           5. Purge PostgeSQL"
-	echo "           6. Replace Delegate Address"
-	echo "           0. Exit to Main Manu"
-	echo
-	echo "         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-	echo
-	tput sgr0
+    tput bold; tput setaf 3
+    echo "         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    echo "               Additional Options"
+    echo "         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    echo
+    echo "           1. Install ARK Cli"
+    echo "           2. Install ARK Explorer"
+    echo "           3. Install Snapshot script"
+    echo "           4. Install Restart script"
+    echo "           5. Purge PostgeSQL"
+    echo "           6. Replace Delegate Address"
+    echo "           0. Exit to Main Manu"
+    echo
+    echo "         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    echo
+    tput sgr0
 }
 
 read_options(){
-	local choice
-	read -p "        Enter choice [1 - 7,A,R,K,S,L]: " choice
-	case $choice in
-		1) one ;;
-		2) two ;;
-		3) three ;;
-		4) four ;;
-		5) five ;;
-		6) six ;;
-		7) seven ;;
-		A) start ;;
-		R) restart ;;
-		K) killit;;
-		[sS]) turn;;
-		[lL]) log;;
-		0) exit 0;;
-		*) echo -e "$(red "             Incorrect option!")" && sleep 1
-	esac
+    local choice
+    read -p "        Enter choice [1 - 7,A,R,K,S,L]: " choice
+    case $choice in
+        1) one ;;
+        2) two ;;
+        3) three ;;
+        4) four ;;
+        5) five ;;
+        6) six ;;
+        7) seven ;;
+        A) start ;;
+        R) restart ;;
+        K) killit;;
+        [sS]) turn;;
+        [lL]) log;;
+        0) exit 0;;
+        *) echo -e "$(red "             Incorrect option!")" && sleep 1
+    esac
 }
 
 
 read_sub_options(){
-	local choice1
-	read -p "          Enter choice [1 - 7]: " choice1
-	case $choice1 in
-		1) subone ;;
-		2) subtwo ;;
-		3) subthree ;;
-		4) four ;;
-		5) subfive ;;
-		6) subsix ;;
-		7) seven ;;
-		0) break ;;
-		*) echo -e "$(red "             Incorrect option!")" && sleep 1
-	esac
+    local choice1
+    read -p "          Enter choice [1 - 7]: " choice1
+    case $choice1 in
+        1) subone ;;
+        2) subtwo ;;
+        3) subthree ;;
+        4) four ;;
+        5) subfive ;;
+        6) subsix ;;
+        7) seven ;;
+        0) break ;;
+        *) echo -e "$(red "             Incorrect option!")" && sleep 1
+    esac
 }
 
 
@@ -1291,68 +1258,68 @@ trap '' SIGINT SIGQUIT SIGTSTP
 # First Run Initial OS update and prerequisites
 # ----------------------------------------------
 if [ -e ./.firstrun ] ; then
-	sdate=$(date +"%Y%m%d")
-	fdate=$(date +"%Y%m%d")
+    sdate=$(date +"%Y%m%d")
+    fdate=$(date +"%Y%m%d")
 else
-	fdate=$(date -r ./.firstrun +"%Y%m%d")
+    fdate=$(date -r ./.firstrun +"%Y%m%d")
 fi
 
 if [ -e ./.firstrun ] && [ "$fdate" <  "$sdate" ]; then
 #       if [ -e ./.firstrun ] && [ $(date -r ./.firstrun +"%Y%m%d") <  $(date +"%Y%m%d") ]; then
                 echo -e "$(yellow "      Checking for system updates...")\n"
                 os_up
-		log_rotate
+        log_rotate
                 touch ./.firstrun
 fi
 
 if [ -e ./.firstrun ] && [ "$fdate" =  "$sdate" ]; then
-	clear
-	asciiart
-	echo -e "$(green "         ✔ Your system is up to date.")\n"
+    clear
+    asciiart
+    echo -e "$(green "         ✔ Your system is up to date.")\n"
 else
-	if [ ! -e ./.firstrun ] ; then
-		clear
-		asciiart
-		db_up
-		clear
-		asciiart
-		######echo ""
-		echo -e "$(yellow "It's the first time you are starting this script!") "
-		echo -e "$(yellow "First it will check if your system is up to date") "
-		echo -e "$(yellow "install updates and needed prerequisites")\n"
-		echo -e "$(yellow "Please be patient! It can take up to 5 minutes!")\n"
-		pause
-		os_up
-		clear
-		asciiart
-		sleep 1
-		node_check iftop
-		        if [ "$return_" == 0 ]; then
-				echo -e "$(yellow "         Installing prerequisites...") "
-				prereq
-			else
-				echo -e "$(green "    ✔ Prerequisites are already installed")"
-			fi
-		clear
-		asciiart
-		echo -e "$(yellow "        Setting up NTP and Locale...") "
-		sleep 1
-		echo ""
-		ntpd
-		echo ""
-		set_locale
-		clear
-		asciiart
-		echo -e "$(yellow "       Setting up NodeJS environment...") "
-		sleep 1
-		nvm
-		sleep 5
-		touch ./.firstrun
-		echo -e "\n$(ired "    !!!  PLEASE REBOOT YOUR SYSTEM NOW  !!!    ") "
-		  echo -e "$(ired "    !!!   START THIS SCRIPT AGAIN AND   !!!    ") "
-		  echo -e "$(ired "    !!!  CHOOSE '1' TO INSTALL ARK NODE !!!    ") "
-		exit
-	fi
+    if [ ! -e ./.firstrun ] ; then
+        clear
+        asciiart
+        db_up
+        clear
+        asciiart
+        ######echo ""
+        echo -e "$(yellow "It's the first time you are starting this script!") "
+        echo -e "$(yellow "First it will check if your system is up to date") "
+        echo -e "$(yellow "install updates and needed prerequisites")\n"
+        echo -e "$(yellow "Please be patient! It can take up to 5 minutes!")\n"
+        pause
+        os_up
+        clear
+        asciiart
+        sleep 1
+        node_check iftop
+                if [ "$return_" == 0 ]; then
+                echo -e "$(yellow "         Installing prerequisites...") "
+                prereq
+            else
+                echo -e "$(green "    ✔ Prerequisites are already installed")"
+            fi
+        clear
+        asciiart
+        echo -e "$(yellow "        Setting up NTP and Locale...") "
+        sleep 1
+        echo ""
+        ntpd
+        echo ""
+        set_locale
+        clear
+        asciiart
+        echo -e "$(yellow "       Setting up NodeJS environment...") "
+        sleep 1
+        nvm
+        sleep 5
+        touch ./.firstrun
+        echo -e "\n$(ired "    !!!  PLEASE REBOOT YOUR SYSTEM NOW  !!!    ") "
+          echo -e "$(ired "    !!!   START THIS SCRIPT AGAIN AND   !!!    ") "
+          echo -e "$(ired "    !!!  CHOOSE '1' TO INSTALL ARK NODE !!!    ") "
+        exit
+    fi
 fi
 
 sudo updatedb
@@ -1365,9 +1332,9 @@ proc_vars
 
 while true
 do
-	asciiart
+    asciiart
 # HERE COMES THE GITHUB CHECK
-	git_upd_check
-	show_menus
-	read_options
+    git_upd_check
+    show_menus
+    read_options
 done
