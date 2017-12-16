@@ -133,16 +133,7 @@ pause(){
 # Current Network Height
 
 function net_height {
-    declare -a seeds=(
-        "167.114.29.51:4002"
-        "167.114.29.52:4002"
-        "167.114.29.53:4002"
-        "167.114.29.54:4002"
-        "167.114.29.55:4002"
-    )
-
-    local seed=${seeds[$RANDOM % ${#seeds[@]}]}
-    local heights=$(curl -s "http://$seed/api/peers" | jq -r '.peers[] | .height')
+    local heights=$(curl -s "$LOC_SERVER/api/peers" | jq -r '.peers[] | .height')
     
     highest=$(echo "${heights[*]}" | sort -nr | head -n1)
 }
