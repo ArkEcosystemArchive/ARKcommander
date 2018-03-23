@@ -134,7 +134,7 @@ pause(){
 
 function net_height {
     local heights=$(curl -s "$LOC_SERVER/api/peers" | jq -r '.peers[] | .height')
-    
+
     highest=$(echo "${heights[*]}" | sort -nr | head -n1)
 }
 
@@ -201,16 +201,29 @@ RANK="$(psql -d ark_mainnet -t -c 'WITH RANK AS (SELECT DISTINCT "publicKey", "v
 
 # Stats Address Change
 change_address() {
+    DID_BREAK=0
+
+    echo -e "\n$(yellow " Press CTRL+C followed by ENTER to return to menu")\n"
     echo "$(yellow "   Enter your delegate address for Stats")"
     echo "$(yellow "    WITHOUT QUOTES, followed by 'ENTER'")"
+    trap "DID_BREAK=1" SIGINT
     read -e -r -p "$(yellow " :") " inaddress
     while [ ! "${inaddress:0:1}" == "A" ] ; do
-        echo -e "\n$(ired "   Enter delegate ADDRESS, NOT the SECRET!")\n"
-        read -e -r -p "$(yellow " :") " inaddress
+        if [ "$DID_BREAK" -eq 0 ] ; then
+            echo -e "\n$(yellow " Use Ctrl+C followed by ENTER to return to menu")\n"
+            echo -e "\n$(ired "   Enter delegate ADDRESS, NOT the SECRET!")\n"
+            read -e -r -p "$(yellow " :") " inaddress
+        else
+            break
+        fi
     done
-    ADDRESS=$inaddress
-#   sed -i "s#\(.*ADDRESS\=\)\( .*\)#\1 "\"$inaddress\""#" $DIR/$BASH_SOURCE
-    sed -i "1,/\(.*ADDRESS\=\)/s#\(.*ADDRESS\=\)\(.*\)#\1"\"$inaddress\""#" $DIR/$BASH_SOURCE
+    if [ "$DID_BREAK" -eq 1 ] ; then
+        init
+    else
+        ADDRESS=$inaddress
+    #   sed -i "s#\(.*ADDRESS\=\)\( .*\)#\1 "\"$inaddress\""#" $DIR/$BASH_SOURCE
+        sed -i "1,/\(.*ADDRESS\=\)/s#\(.*ADDRESS\=\)\(.*\)#\1"\"$inaddress\""#" $DIR/$BASH_SOURCE
+    fi
 }
 
 
