@@ -1197,7 +1197,7 @@ sub_menu() {
     echo "           4. Install Restart script"
     echo "           5. Purge PostgeSQL"
     echo "           6. Replace Delegate Address"
-    echo "           0. Exit to Main Manu"
+    echo "           0. Exit to Main Menu"
     echo
     echo "         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
     echo
