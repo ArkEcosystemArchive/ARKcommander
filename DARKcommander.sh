@@ -134,7 +134,6 @@ pause(){
 
 function net_height {
     local heights=$(curl -s "$LOC_SERVER/api/peers" | jq -r '.peers[] | .height')
-    
     highest=$(echo "${heights[*]}" | sort -nr | head -n1)
 }
 
@@ -201,18 +200,30 @@ RANK="$(psql -d ark_devnet -t -c 'WITH RANK AS (SELECT DISTINCT "publicKey", "vo
 
 # Stats Address Change
 change_address() {
+    DID_BREAK=0
+
+    echo -e "\n$(yellow " Press CTRL+C followed by ENTER to return to menu")\n"
     echo "$(yellow "   Enter your delegate address for Stats")"
     echo "$(yellow "    WITHOUT QUOTES, followed by 'ENTER'")"
+    trap "DID_BREAK=1" SIGINT
     read -e -r -p "$(yellow " :") " inaddress
     while [ ! "${inaddress:0:1}" == "D" ] ; do
-        echo -e "\n$(ired "   Enter delegate ADDRESS, NOT the SECRET!")\n"
-        read -e -r -p "$(yellow " :") " inaddress
+        if [ "$DID_BREAK" -eq 0 ] ; then
+            echo -e "\n$(yellow " Use Ctrl+C followed by ENTER to return to menu")\n"
+            echo -e "\n$(ired "   Enter delegate ADDRESS, NOT the SECRET!")\n"
+            read -e -r -p "$(yellow " :") " inaddress
+        else
+            break
+        fi
     done
-    ADDRESS=$inaddress
-#   sed -i "s#\(.*ADDRESS\=\)\( .*\)#\1 "\"$inaddress\""#" $DIR/$BASH_SOURCE
-    sed -i "1,/\(.*ADDRESS\=\)/s#\(.*ADDRESS\=\)\(.*\)#\1"\"$inaddress\""#" $DIR/$BASH_SOURCE
+    if [ "$DID_BREAK" -eq 1 ] ; then
+        init
+    else
+        ADDRESS=$inaddress
+    #   sed -i "s#\(.*ADDRESS\=\)\( .*\)#\1 "\"$inaddress\""#" $DIR/$BASH_SOURCE
+        sed -i "1,/\(.*ADDRESS\=\)/s#\(.*ADDRESS\=\)\(.*\)#\1"\"$inaddress\""#" $DIR/$BASH_SOURCE
+    fi
 }
-
 
 # Forging Turn
 turn() {
@@ -1206,7 +1217,7 @@ sub_menu() {
 
 read_options(){
     local choice
-    read -p "        Enter choice [1 - 7,A,R,K,S,L]: " choice
+    read -p "        Enter choice [0 - 7,A,R,K,S,L]: " choice
     case $choice in
         1) one ;;
         2) two ;;
@@ -1228,7 +1239,7 @@ read_options(){
 
 read_sub_options(){
     local choice1
-    read -p "          Enter choice [1 - 7]: " choice1
+    read -p "          Enter choice [0 - 7]: " choice1
     case $choice1 in
         1) subone ;;
         2) subtwo ;;
