@@ -196,7 +196,7 @@ MISS_BLOCKS="$(psql -d ark_mainnet -t -c 'SELECT missedblocks FROM mem_accounts 
 #BALANCE="$(psql -d ark_mainnet -t -c 'SELECT (balance/100000000.0) as balance FROM mem_accounts WHERE "address" = '"'"$ADDRESS"'"' ;' | sed -e 's/^[[:space:]]*//')"
 BALANCE="$(psql -d ark_mainnet -t -c 'SELECT to_char(("balance"/100000000.0), '"'FM 999,999,999,990D00000000'"' ) as balance FROM mem_accounts WHERE "address" = '"'"$ADDRESS"'"' ;' | xargs)"
 HEIGHT="$(psql -d ark_mainnet -t -c 'SELECT height FROM blocks ORDER BY HEIGHT DESC LIMIT 1;' | xargs)"
-RANK="$(psql -d ark_mainnet -t -c 'WITH RANK AS (SELECT DISTINCT "publicKey", "vote", "round", row_number() over (order by "vote" desc nulls last) as "rownum" FROM mem_delegates where "round" = (select max("round") from mem_delegates) ORDER BY "vote" DESC) SELECT "rownum" FROM RANK WHERE "publicKey" = '"'03cfafb2ca8cf7ce70f848456b1950dc7901946f93908e4533aace997c242ced8a'"';' | xargs)"
+RANK="$(psql -d ark_mainnet -t -c 'WITH RANK AS (SELECT DISTINCT "publicKey", "vote", "round", row_number() over (order by "vote" desc nulls last) as "rownum" FROM mem_delegates where "round" = (select max("round") from mem_delegates) ORDER BY "vote" DESC) SELECT "rownum" FROM RANK WHERE "publicKey" = '"'"$PUBKEY"'"';' | xargs)"
 }
 
 # Stats Address Change
@@ -256,6 +256,17 @@ while true; do
     queue=`curl --connect-timeout 3 -f -s $LOC_SERVER/api/delegates/getNextForgers?limit=51 | jq ".delegates"`
     is_forging=`curl -s --connect-timeout 1 $LOC_SERVER/api/delegates/forging/status?publicKey=$PUBKEY 2>/dev/null | jq ".enabled"`
     is_syncing=`curl -s --connect-timeout 1 $LOC_SERVER/api/loader/status/sync 2>/dev/null | jq ".syncing"`
+
+    BLOCK_SUM=$((MISS_BLOCKS+PROD_BLOCKS))
+
+    if ! [[ $BLOCK_SUM -eq 0 ]]
+    then
+        RATIO=$((20000 * PROD_BLOCKS / BLOCK_SUM % 2 + 10000 * PROD_BLOCKS / BLOCK_SUM))
+        [[ $PROD_BLOCKS == 0 ]] && RATIO=0 || RATIO=$(sed 's/..$/.&/;t;s/^.$/.0&/' <<< $RATIO)
+    else
+        RATIO=0
+    fi
+
     pos=0
     for position in $queue
     do
@@ -280,6 +291,7 @@ while true; do
 #   echo -e "$(green "Public Key:")\n$(yellow "$PUBKEY")\n"
     echo -e "$(green "      Forged Blocks    : ")$(yellow "$PROD_BLOCKS")"
     echo -e "$(green "      Missed Blocks    : ")$(yellow "$MISS_BLOCKS")"
+    echo -e "$(green "      Productivity     : ")$(yellow "$RATIO"%)"
     echo -e "$(green "      ARK Balance      : ")$(yellow "$BALANCE")"
     echo
     echo -e "\n$(yellow "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")"
