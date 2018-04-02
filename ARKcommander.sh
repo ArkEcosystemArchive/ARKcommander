@@ -80,6 +80,8 @@ LOC_SERVER="http://localhost:4001"
 
 ADDRESS=""
 
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 SNAPDIR="$HOME/snapshots"
 
 re='^[0-9]+$' # For numeric checks
@@ -229,7 +231,6 @@ change_address() {
 
 # Forging Turn
 turn() {
-    DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 #   echo $DIR
 #   echo "$BASH_SOURCE"
 #   echo "$ADDRESS"
