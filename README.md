@@ -4,7 +4,7 @@
 
 > A simple shell script to easily setup an ARK node
 
-First configure your server by following [this steps](https://blog.ark.io/how-to-setup-a-node-for-ark-and-a-basic-cheat-sheet-4f82910719da).
+First configure and secure your server by following this [guide](https://github.com/ArkEcosystem/docs/blob/master/system_administration/01_SetupArkNode.md).
 
 ## Usage
 
