@@ -986,40 +986,51 @@ three() {
 four() {
   asciiart
   proc_vars
-  if [ "$node" != "" ] && [ "$node" != "0" ]; then
-    echo -e "$(green "       Instance of ARK Node found with:")"
-    echo -e "$(green "       System PID: $node, Forever PID $forever_process")"
-    echo -e "$(green "       Directory: $arkdir")\n"
-    echo -e "\n$(green "            Stopping ARK Node...")\n"
-    cd $arkdir
-    forever stop $forever_process >&- 2>&-
-    echo -e "$(green "             Dropping ARK DB...")\n"
-    drop_db
-    drop_user
-    echo -e "$(green "             Creating ARK DB...")\n"
-    create_db
 
-    # Here should come the snap choice
-    snap_menu
-    echo -e "$(green "            Starting ARK Node...")"
-    forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
-    echo -e "\n$(green "    ✔ ARK Node was successfully started")\n"
-    pause
-  else
-    echo -e "\n$(red "       ✘ ARK Node process is not running")\n"
-    echo -e "$(green "             Dropping ARK DB...")\n"
-    drop_db
-    drop_user
-    echo -e "$(green "             Creating ARK DB...")\n"
-    create_db
+  echo -e "    $(ired "                                        ")"
+  echo -e "    $(ired "   WARNING! This option will stop all   ")"
+  echo -e "    $(ired "   running Ark Node processes, remove   ")"
+  echo -e "    $(ired "   and rebuild the databases! Are you   ")"
+  echo -e "    $(ired "   REALLY sure?                         ")"
+  echo -e "    $(ired "                                        ")"
+  read -e -r -p "$(yellow "\n    Type (Y) to proceed or (N) to cancel: ")" -i "N" YN
 
-    # Here should come the snap choice
-    snap_menu
-    echo -e "$(green "            Starting ARK Node...")"
-    cd $arkdir
-    forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
-    echo -e "$(green "    ✔ ARK Node was successfully started")\n"
-    pause
+  if [[ "$YN" =~ [Yy]$ ]]; then
+    if [ "$node" != "" ] && [ "$node" != "0" ]; then
+      echo -e "$(green "       Instance of ARK Node found with:")"
+      echo -e "$(green "       System PID: $node, Forever PID $forever_process")"
+      echo -e "$(green "       Directory: $arkdir")\n"
+      echo -e "\n$(green "            Stopping ARK Node...")\n"
+      cd $arkdir
+      forever stop $forever_process >&- 2>&-
+      echo -e "$(green "             Dropping ARK DB...")\n"
+      drop_db
+      drop_user
+      echo -e "$(green "             Creating ARK DB...")\n"
+      create_db
+
+      # Here should come the snap choice
+      snap_menu
+      echo -e "$(green "            Starting ARK Node...")"
+      forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
+      echo -e "\n$(green "    ✔ ARK Node was successfully started")\n"
+      pause
+    else
+      echo -e "\n$(red "       ✘ ARK Node process is not running")\n"
+      echo -e "$(green "             Dropping ARK DB...")\n"
+      drop_db
+      drop_user
+      echo -e "$(green "             Creating ARK DB...")\n"
+      create_db
+
+      # Here should come the snap choice
+      snap_menu
+      echo -e "$(green "            Starting ARK Node...")"
+      cd $arkdir
+      forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
+      echo -e "$(green "    ✔ ARK Node was successfully started")\n"
+      pause
+    fi
   fi
 }
 
