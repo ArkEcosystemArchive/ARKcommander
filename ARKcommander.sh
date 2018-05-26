@@ -1291,71 +1291,67 @@ trap '' SIGINT SIGQUIT SIGTSTP
 # First Run Initial OS update and prerequisites
 # ----------------------------------------------
 
+sdate=$(date +"%Y%m%d")
+
 if [ -e ./.firstrun ] ; then
-  sdate=$(date +"%Y%m%d")
-  fdate=$(date +"%Y%m%d")
-else
   fdate=$(date -r ./.firstrun +"%Y%m%d")
 fi
 
-# if [ -e ./.firstrun ] && [ $(date -r ./.firstrun +"%Y%m%d") <  $(date +"%Y%m%d") ]; then
-if [ -e ./.firstrun ] && [ "$fdate" <  "$sdate" ]; then
-  echo -e "$(yellow "      Checking for system updates...")\n"
-  os_up
-  log_rotate
-  touch ./.firstrun
-fi
-
-if [ -e ./.firstrun ] && [ "$fdate" =  "$sdate" ]; then
+if [ -e ./.firstrun ]; then
+  if [ "$fdate" -lt "$sdate" ]; then
+    echo -e "$(yellow "      Checking for system updates...")\n"
+    os_up
+    log_rotate
+    touch ./.firstrun
+  elif [ "$fdate" -eq "$sdate" ]; then
+    clear
+    asciiart
+    echo -e "$(green "         ✔ Your system is up to date.")\n"
+  fi
+else
   clear
   asciiart
-  echo -e "$(green "         ✔ Your system is up to date.")\n"
-else
-  if [ ! -e ./.firstrun ] ; then
-    clear
-    asciiart
-    db_up
-    clear
-    asciiart
-    # echo ""
-    echo -e "$(yellow "It's the first time you are starting this script!") "
-    echo -e "$(yellow "First it will check if your system is up to date") "
-    echo -e "$(yellow "install updates and needed prerequisites")\n"
-    echo -e "$(yellow "Please be patient! It can take up to 5 minutes!")\n"
-    pause
-    os_up
-    clear
-    asciiart
-    sleep 1
-    node_check iftop
+  db_up
+  clear
+  asciiart
+  # echo ""
+  echo -e "$(yellow "It's the first time you are starting this script!") "
+  echo -e "$(yellow "First it will check if your system is up to date") "
+  echo -e "$(yellow "install updates and needed prerequisites")\n"
+  echo -e "$(yellow "Please be patient! It can take up to 5 minutes!")\n"
+  pause
+  os_up
+  clear
+  asciiart
+  sleep 1
+  node_check iftop
 
-    if [ "$return_" == 0 ]; then
-      echo -e "$(yellow "         Installing prerequisites...") "
-      prereq
-    else
-      echo -e "$(green "    ✔ Prerequisites are already installed")"
-    fi
-
-    clear
-    asciiart
-    echo -e "$(yellow "        Setting up NTP and Locale...") "
-    sleep 1
-    echo ""
-    ntpd
-    echo ""
-    set_locale
-    clear
-    asciiart
-    echo -e "$(yellow "       Setting up NodeJS environment...") "
-    sleep 1
-    nvm
-    sleep 5
-    touch ./.firstrun
-    echo -e "\n$(ired "    !!!  PLEASE REBOOT YOUR SYSTEM NOW  !!!    ") "
-    echo -e "$(ired "    !!!   START THIS SCRIPT AGAIN AND   !!!    ") "
-    echo -e "$(ired "    !!!  CHOOSE '1' TO INSTALL ARK NODE !!!    ") "
-    exit
+  if [ "$return_" == 0 ]; then
+    echo -e "$(yellow "         Installing prerequisites...") "
+    prereq
+  else
+    echo -e "$(green "    ✔ Prerequisites are already installed")"
   fi
+
+  clear
+  asciiart
+  echo -e "$(yellow "        Setting up NTP and Locale...") "
+  sleep 1
+  echo ""
+  ntpd
+  echo ""
+  set_locale
+  clear
+  asciiart
+  echo -e "$(yellow "       Setting up NodeJS environment...") "
+  sleep 1
+  nvm
+  sleep 5
+  touch ./.firstrun
+  echo -e "\n$(ired "    !!!  PLEASE REBOOT YOUR SYSTEM NOW  !!!    ") "
+  echo -e "$(ired "    !!!   START THIS SCRIPT AGAIN AND   !!!    ") "
+  echo -e "$(ired "    !!!  CHOOSE '1' TO INSTALL ARK NODE !!!    ") "
+  exit
 fi
 
 sudo updatedb
