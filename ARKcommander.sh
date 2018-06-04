@@ -83,6 +83,7 @@ ADDRESS=""
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 SNAPDIR="$HOME/snapshots"
+SNAPURL="https://snapshots.ark.io/current"
 
 re='^[0-9]+$' # For numeric checks
 
@@ -220,15 +221,39 @@ change_address() {
       break
     fi
   done
-  if [ "$DID_BREAK" -eq 1 ] ; then
-    init
-  else
+
+  if [ "$DID_BREAK" -eq 0 ] ; then
     ADDRESS=$inaddress
     # sed -i "s#\(.*ADDRESS\=\)\( .*\)#\1 "\"$inaddress\""#" $DIR/$BASH_SOURCE
     sed -i "1,/\(.*ADDRESS\=\)/s#\(.*ADDRESS\=\)\(.*\)#\1"\"$inaddress\""#" $DIR/$BASH_SOURCE
   fi
 }
 
+# Snapshot URL Change
+change_snapurl() {
+  DID_BREAK=0
+
+  echo -e "\n$(yellow " Press CTRL+C followed by ENTER to return to menu")\n"
+  echo "$(yellow "          Enter your snapshot URL")"
+  echo "$(yellow "    WITHOUT QUOTES, followed by 'ENTER'")"
+  trap "DID_BREAK=1" SIGINT
+  read -e -r -p "$(yellow " :") " insnapurl
+
+  while [ ! "${insnapurl:0:4}" == "http" ] ; do
+    if [ "$DID_BREAK" -eq 0 ] ; then
+      echo -e "\n$(yellow " Use Ctrl+C followed by ENTER to return to menu")"
+      echo -e "\n      $(ired "   The URL must begin with 'http'   ")\n"
+      read -e -r -p "$(yellow " :") " insnapurl
+    else
+      break
+    fi
+  done
+
+  if [ "$DID_BREAK" -eq 0 ] ; then
+    SNAPURL=$insnapurl
+    sed -i "1,/\(.*SNAPURL\=\)/s#\(.*SNAPURL\=\)\(.*\)#\1"\"$insnapurl\""#" $DIR/$BASH_SOURCE
+  fi
+}
 
 # Forging Turn
 turn() {
@@ -574,11 +599,11 @@ function snap_menu {
   if [ "$(ls -A $SNAPDIR)" ]; then
     if [[ $(expr `date +%s` - `stat -c %Y $SNAPDIR/current`) -gt 900 ]]; then
       echo -e "$(yellow " Existing Current snapshot is older than 15 minutes")"
-      read -e -r -p "$(yellow "\n Download from ARK.IO? (Y) or use Local (N) ")" -i "Y" YN
+      read -e -r -p "$(yellow "\n Download from ${SNAPURL}? (Y) or use Local (N) ")" -i "Y" YN
       if [[ "$YN" =~ [Yy]$ ]]; then
-        echo -e "$(yellow "\n     Downloading latest snapshot from ARK.IO\n")"
+        echo -e "$(yellow "\n         Downloading latest snapshot\n")"
         rm $SNAPDIR/current
-        wget -nv https://snapshots.ark.io/current -O $SNAPDIR/current
+        wget -nv $SNAPURL -O $SNAPDIR/current
         echo -e "$(yellow "\n              Download finished\n")"
       fi
     fi
@@ -614,8 +639,8 @@ function snap_menu {
     echo -e "$(red "    No snapshots found in $SNAPDIR")"
     read -e -r -p "$(yellow "\n Do you like to download the latest snapshot? (Y/n) ")" -i "Y" YN
     if [[ "$YN" =~ [Yy]$ ]]; then
-      echo -e "$(yellow "\n     Downloading current snapshot from ARK.IO\n")"
-      wget -nv https://snapshots.ark.io/current -O $SNAPDIR/current
+      echo -e "$(yellow "\n         Downloading current snapshot\n")"
+      wget -nv $SNAPURL -O $SNAPDIR/current
       echo -e "$(yellow "\n              Download finished\n")"
     fi
 
@@ -1195,6 +1220,12 @@ subsix() {
   change_address
 }
 
+subseven() {
+  clear
+  asciiart
+  change_snapurl
+}
+
 # Menu
 show_menus() {
   tput bold; tput setaf 3
@@ -1235,6 +1266,7 @@ sub_menu() {
   echo "           4. Install Restart script"
   echo "           5. Purge PostgeSQL"
   echo "           6. Replace Delegate Address"
+  echo "           7. Replace Snapshot URL"
   echo "           0. Exit to Main Menu"
   echo
   echo "         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
@@ -1273,7 +1305,7 @@ read_sub_options() {
     4) four ;;
     5) subfive ;;
     6) subsix ;;
-    7) seven ;;
+    7) subseven ;;
     0) init ;;
     *) echo -e "$(red "             Incorrect option!")" && sleep 1
   esac
