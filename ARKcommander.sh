@@ -1036,9 +1036,21 @@ four() {
 
       # Here should come the snap choice
       snap_menu
-      echo -e "$(green "            Starting ARK Node...")"
-      forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
-      echo -e "\n$(green "    ✔ ARK Node was successfully started")\n"
+      echo -e "$(green "         Running DB Sanity Check")\n"
+      REWARD=$(psql -tAq ark_mainnet -c 'SELECT ((MAX(height) - 75599) * 2) from blocks;')
+      SUM=$(psql -tAq ark_mainnet -c 'select sum(balance) from mem_accounts;')
+      NEGATIVE=$(psql -tAq ark_mainnet -c 'select address, balance from mem_accounts where balance < 0;')
+      NEGATIVE_COUNT=$(echo $NEGATIVE | wc -l)
+      SUM_ARK=$(echo $SUM | sed 's/........$//')
+      SUM_REMAINDER=$(echo $SUM | sed 's/.*\(........$\)/\1/')
+      if [[ "$SUM_REMAINDER" != "00000000" ]] || [[ "$SUM_ARK" != "$REWARD" ]] || [[ $NEGATIVE_COUNT != 1 ]] ; then
+        echo -e "$(red "\n    ✘ Error passing check, snapshot corrupt!")\n"
+        echo -e "$(red "\n      Please download a different snapshot!")\n"
+      else
+        echo -e "$(green "            Starting ARK Node...")"
+        forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json >&- 2>&-
+        echo -e "\n$(green "    ✔ ARK Node was successfully started")\n"
+      fi
       pause
     else
       echo -e "\n$(red "       ✘ ARK Node process is not running")\n"
